@@ -1,25 +1,27 @@
-const express = require("express");
+const express = require('express');
 const router = express.Router();
-const gravatar = require("gravatar");
-const bcrypt = require("bcryptjs");
-const { check, validationResult } = require("express-validator");
+const gravatar = require('gravatar');
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
+const config = require('config');
+const { check, validationResult } = require('express-validator');
 
-const User = require("../../models/User");
+const User = require('../../models/User');
 
 //@route    Post api/users
 //@desc     Register User
 //@access   Public
 
 router.post(
-  "/",
+  '/',
   [
-    check("name", "Name is Required")
+    check('name', 'Name is Required')
       .not()
       .isEmpty(),
-    check("email", "Please enter valid email").isEmail(),
+    check('email', 'Please enter valid email').isEmail(),
     check(
-      "password",
-      "Please enter a password with 6 or more symbols"
+      'password',
+      'Please enter a password with 6 or more symbols'
     ).isLength({
       min: 6
     })
@@ -39,13 +41,13 @@ router.post(
       if (user) {
         return res
           .status(400)
-          .json({ errors: [{ msg: "User Already exists" }] });
+          .json({ errors: [{ msg: 'User Already exists' }] });
       }
       // Get users gravatar
       const avatar = gravatar.url(email, {
-        s: "200",
-        r: "pg",
-        d: "mm"
+        s: '200',
+        r: 'pg',
+        d: 'mm'
       });
 
       user = new User({
@@ -61,13 +63,25 @@ router.post(
 
       await user.save();
       // Return jsonwebtoken
-      res.send("User registered");
+      const payload = {
+        user: {
+          id: user.id
+        }
+      };
+      // FIX EXPIRATION DURATION !!!!!!
+      jwt.sign(
+        payload,
+        config.get('jwtSecret'),
+        { expiresIn: 360000 },
+        (err, token) => {
+          if (err) throw err;
+          res.json({ token });
+        }
+      );
     } catch (err) {
       console.error(err.message);
-      res.status(500).send("Server error");
+      res.status(500).send('Server error');
     }
-
-    res.send("User route");
   }
 );
 
